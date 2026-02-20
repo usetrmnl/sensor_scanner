@@ -13,45 +13,57 @@
 
 SCD41 co2;
 
-void CreateJSON(const char *filename, int iCO2, int iTemp, int iHumidity)
+// Structure holding all of the info for a JSON sensor record
+typedef struct tagjsonrec
 {
-FILE *f;
-char szTemp[256], szOut[1024];
-time_t tt;
+const char *szMake;
+const char *szModel;
+const char *szKind;
+const char *szValue;
+const char *szUnit;
+} JSONREC;
 
-	f = fopen(filename, "w");
-	if (f) {
-		tt = time(NULL);  // get the current system time
+// Enumerated value indicating the position of the record in the JSON
+// We need this to know where to start/end the nested curly braces
+enum {
+    REC_INVALID = 0,
+    REC_FIRST,
+    REC_ANY,
+    REC_LAST
+};
+
+//
+// Add one item to the JSON file
+// f - an open file handle
+// pRec - pointer to a JSONREC structure
+// iRecOrder - indicates if this is the first, middle or last value
+//
+void AddJSONItem(FILE *f, JSONREC *pRec, int iRecOrder)
+{
+time_t tt;
+char szOut[1024], szTemp[256];
+
+	tt = time(NULL);  // get the current system time
+	if (iRecOrder == REC_FIRST) {
 		strcpy(szOut, "{\n  \"data\": [\n    {\n");
-// CO2 value
-		strcat(szOut, "      \"make\": \"Sensirion\",\n      \"model\": \"SCD41\",\n");
-		strcat(szOut, "      \"kind\": \"co2\",\n");
-		sprintf(szTemp, "      \"value\": %d,\n", iCO2);
-		strcat(szOut, szTemp);
-		strcat(szOut, "      \"unit\": \"ppm\",\n");
-		sprintf(szTemp, "      \"updated_at\": %lu\n    },\n    {\n", (unsigned long)tt);
-		strcat(szOut, szTemp);
-// Temperature value
-                strcat(szOut, "      \"make\": \"Sensirion\",\n      \"model\": \"SCD41\",\n");
-                strcat(szOut, "      \"kind\": \"temperature\",\n");
-                sprintf(szTemp, "      \"value\": %.2f,\n", ((float)iTemp)/10.0f);
-                strcat(szOut, szTemp);
-                strcat(szOut, "      \"unit\": \"celcius\",\n");
-                sprintf(szTemp, "      \"updated_at\": %lu\n    },\n    {\n", (unsigned long)tt);
-                strcat(szOut, szTemp);
-// Humidity value
-                strcat(szOut, "      \"make\": \"Sensirion\",\n      \"model\": \"SCD41\",\n");
-                strcat(szOut, "      \"kind\": \"humidity\",\n");
-                sprintf(szTemp, "      \"value\": %d,\n", iHumidity);
-                strcat(szOut, szTemp);
-                strcat(szOut, "      \"unit\": \"percent\",\n");
-                sprintf(szTemp, "      \"updated_at\": %lu\n    }\n  ]\n}\n", (unsigned long)tt);
-                strcat(szOut, szTemp);
-		fwrite(szOut, 1, strlen(szOut), f);
-		fflush(f);
-		fclose(f);
+        } else {
+		strcpy(szOut, "    {\n");
 	}
-} /* CreateJSON() */
+	sprintf(szTemp, "      \"make\": \"%s\",\n      \"model\": \"%s\",\n", pRec->szMake, pRec->szModel);
+	strcat(szOut, szTemp);
+	sprintf(szTemp, "      \"kind\": \"%s\",\n      \"value\": %s,\n", pRec->szKind, pRec->szValue);
+	strcat(szOut, szTemp);
+	sprintf(szTemp, "      \"unit\": \"%s\",\n", pRec->szUnit);
+	strcat(szOut, szTemp);
+	sprintf(szTemp, "      \"updated_at\": %lu\n    }", (unsigned long)tt);
+	strcat(szOut, szTemp);
+	if (iRecOrder == REC_LAST) {
+		strcat(szOut, "\n  ]\n}\n");
+	} else {
+		strcat(szOut, ",\n");
+	}
+	fwrite(szOut, 1, strlen(szOut), f);
+} /* AddJSONItem() */
 
 int main(int argc, char *argv[])
 {
@@ -59,7 +71,7 @@ int i, iBus;
 DIR *pDir;
 struct dirent *pDE;
 uint32_t u32Buses = 0; // available I2C bus numbers (0-31)
-
+JSONREC rec;
         
         printf("sensor2json example\n");
         printf("Finds which I2C bus has the supported sensor, then\ninitializes, configures, and loops updating the json with the latest sensor values.\n");
@@ -105,9 +117,35 @@ uint32_t u32Buses = 0; // available I2C bus numbers (0-31)
         printf("SCD41 detected and initialized\n");
 	co2.start(); // start the sensor with the default options
 	while (1) {
-		co2.getSample();
-                CreateJSON(argv[1], co2.co2(), co2.temperature(), co2.humidity());
+            char szValue[32];
+            FILE *f;
+            co2.getSample();
+            f = fopen(argv[1], "w+b");
+            if (f) { // open succeeded
+                // The constant info for each JSON record
+                rec.szMake = "Sensirion";
+                rec.szModel = "SCD41";
+                rec.szValue = szValue;
+		// Add CO2 value
+                rec.szKind = "co2";
+                sprintf(szValue, "%d", co2.co2());
+                rec.szUnit = "ppm";
+                AddJSONItem(f, &rec, REC_FIRST);
+		// Add temperature value
+                rec.szKind = "temperature";
+                sprintf(szValue, "%.1f", (float)co2.temperature() / 10.0f);
+                rec.szUnit = "celsius";
+                AddJSONItem(f, &rec, REC_ANY);
+		// Add humidity value
+                rec.szKind = "humidity";
+                sprintf(szValue, "%d", co2.humidity());
+                rec.szUnit = "percent";
+                AddJSONItem(f, &rec, REC_LAST);
+		// write any remaining data and close the file
+                fflush(f);
+                fclose(f);
 		usleep(5000000); // one sample every 5 seconds
-	}
+            } // if file opened
+	} // while (1)
 return 0;
 } /* main() */
