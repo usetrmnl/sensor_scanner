@@ -129,7 +129,7 @@ JSONREC rec;
 		// Add CO2 value
                 rec.szKind = "co2";
                 sprintf(szValue, "%d", co2.co2());
-                rec.szUnit = "ppm";
+                rec.szUnit = "parts_per_million";
                 AddJSONItem(f, &rec, REC_FIRST);
 		// Add temperature value
                 rec.szKind = "temperature";
