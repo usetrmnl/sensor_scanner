@@ -2,28 +2,58 @@
 :toclevels: 5
 :figure-caption!:
 
+:trmnl_link: link:https://trmnl.com[TRMNL]
+:trmnl_byos_link: link:https://trmnl.com/developers[TRMNL BYOS]
+:pi_project_link: link:https://alchemists.io/projects/pi[Pi]
+:raspberry_pi_link: link:https://www.raspberrypi.org[Raspberry Pi]
+
 = Sensor Scanner
+
+Allows you to scan sensors connected to your machine and produce a JSON Data API response you can use for input within your own application. This is best used with our {trmnl_byos_link} self-hosted implementations.
 
 toc::[]
 
 == Features
 
+* Supports {trmnl_byos_link} open source self-hosted implementations.
+* Supports sensors connected to {raspberry_pi_link} hosts.
+* Supports the following sensors:
+** link:https://www.sparkfun.com/sparkfun-co2-humidity-and-temperature-sensor-scd41-qwiic.html[SCD41] : SparkFun CO2 Humidity and Temperature Sensor.
+** link:https://www.sparkfun.com/sparkfun-humidity-sensor-breakout-shtc3-qwiic.html[AHT20]: SparkFun Humidity Sensor.
+** link:https://www.adafruit.com/product/1603[BMP180]: Adafruit Barometric Pressure/Temperature/Altitude Sensor.
+** link:https://www.sparkfun.com/sparkfun-atmospheric-sensor-breakout-bme280-qwiic.html[BME280]: SparkFun Atmospheric Sensor.
+** link:https://www.sparkfun.com/sparkfun-pressure-sensor-bmp384-qwiic.html[BMP388]: SparkFun Pressure Sensor.
+** link:https://www.adafruit.com/product/2857[SHT3X]: Adafruit Sensirion Temperature & Humidity Sensor.
+** link:https://thinkrobotics.com/products/ccs811-hdc1080-bmp180-carbon-dioxide-temperature-humidity-and-height-three-in-one-sensor[HDC180]: Think Robotics Gas, Temperature, and Humidity Sensor.
+** link:https://www.adafruit.com/product/4535[HTS221]: Adafruit Temperature & Humidity Sensor.
+** link:https://www.adafruit.com/product/1782[MCP9808]: Adafruit High Accuracy I2C Temperature Sensor.
+
 == Requirements
 
-. link:https://www.ruby-lang.org[Ruby].
+. link:https://www.c-language.org[C].
+. link:https://www.ruby-lang.org[Ruby] (for setup and CI).
 
 == Setup
 
-To set up project, run:
+To set up the project, run:
 
 [source,bash]
 ----
-git clone https://github.com/bkuhlmann/sensor_scanner
+git clone https://github.com/usetrmnl/sensor_scanner
 cd sensor_scanner
 bin/setup
 ----
 
 == Usage
+
+To build for {raspberry_pi_link}, use
+
+[source,bash]
+----
+bin/build
+----
+
+💡 You can also use the {pi_project_link} project to save the above as a `sensor_scanner` service for automatic install and configuration on your Raspberry Pi.
 
 == Development
 
