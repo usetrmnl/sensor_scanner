@@ -127,7 +127,7 @@ JSONREC rec;
                 rec.szModel = "SCD41";
                 rec.szValue = szValue;
 		// Add CO2 value
-                rec.szKind = "co2";
+                rec.szKind = "carbon_dioxide";
                 sprintf(szValue, "%d", co2.co2());
                 rec.szUnit = "parts_per_million";
                 AddJSONItem(f, &rec, REC_FIRST);
