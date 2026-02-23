@@ -55,7 +55,7 @@ char szOut[1024], szTemp[256];
 	strcat(szOut, szTemp);
 	sprintf(szTemp, "      \"unit\": \"%s\",\n", pRec->szUnit);
 	strcat(szOut, szTemp);
-	sprintf(szTemp, "      \"updated_at\": %lu\n    }", (unsigned long)tt);
+	sprintf(szTemp, "      \"created_at\": %lu\n    }", (unsigned long)tt);
 	strcat(szOut, szTemp);
 	if (iRecOrder == REC_LAST) {
 		strcat(szOut, "\n  ]\n}\n");
