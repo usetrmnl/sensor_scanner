@@ -1,13 +1,13 @@
 CFLAGS= -D__LINUX__ -c -Wall -O2
-LIBS = -lm -lbb_scd41 -lpthread
+LIBS = -lm -lbb_scd41 -lbb_temperature -lpthread
 
-all: sensor2json
+all: sensor_scanner
 
-sensor2json: main.o
-	g++ main.o $(LIBS) -o sensor2json
+sensor_scanner: main.o
+	g++ main.o $(LIBS) -o sensor_scanner
 
 main.o: main.cpp
 	g++ $(CFLAGS) main.cpp
 
 clean:
-	rm *.o sensor2json
+	rm *.o sensor_scanner

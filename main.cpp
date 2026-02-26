@@ -1,5 +1,5 @@
 //
-// Write SCD4x sensor values into a JSON file
+// Write sensor values into a JSON file
 // written by Larry Bank Feb 13, 2026
 //
 #include <stdio.h>
@@ -9,9 +9,14 @@
 #include <stdint.h>
 #include <dirent.h>
 #include <bb_scd41.h>
+#include <bb_temperature.h>
 #include <time.h>
 
 SCD41 co2;
+BBTemp bbt;
+bool bCO2, bTemp; // Presence of each sensor type
+const char *szDevices[] = {"Not found", "AHT20", "BMP180", "BME280", "BMP388", "SHT3X", "HDC1080", "HTS221", "MCP9808"};
+const char *szMakers[] = {"None", "ASAIR", "Bosch", "Bosch", "Bosch", "Sensirion", "TI", "STMicro","MicroChip"};
 
 // Structure holding all of the info for a JSON sensor record
 typedef struct tagjsonrec
@@ -73,7 +78,7 @@ struct dirent *pDE;
 uint32_t u32Buses = 0; // available I2C bus numbers (0-31)
 JSONREC rec;
         
-        printf("sensor2json example\n");
+        printf("sensor_scanner example\n");
         printf("Finds which I2C bus has the supported sensor, then\ninitializes, configures, and loops updating the json with the latest sensor values.\n");
         if (argc != 2) {
             printf("usage: sensor2json <json file>\n");
@@ -99,48 +104,102 @@ JSONREC rec;
 	    printf("to ensure that I2C is enabled.\n");
 	    return -1;
 	}
-	// Search each I2C bus for a supported proximited sensor
+	// Search each I2C bus for a supported sensor
+        bCO2 = bTemp = false;
         for (iBus=0; iBus<32; iBus++) {
 	    if (u32Buses & (1<<iBus)) { // a bus that we found in /dev
-                i = co2.init(iBus); // scan for supported sensors
-                if (i == SCD41_SUCCESS) {
-                    printf("Found a device on i2c-%d!\n", iBus);
-		    break;
+                if (!bCO2) {
+                    i = co2.init(iBus); // scan for supported sensors
+                    if (i == SCD41_SUCCESS) {
+                        printf("Found a SCD4x on i2c-%d!\n", iBus);
+		        bCO2 = true;
+                    }
 		}
-	    }
+                if (!bTemp) {
+                    i = bbt.init(iBus); // scan for temp/humidity/pressure
+                    if (i == BBT_SUCCESS) {
+                        printf("Found a bb_temperature device on i2c-%d!\n", iBus);
+                        bTemp = true;
+                    } 
+                }
+	    } // if bus exists
+            if (bCO2 || bTemp) break; // found what we're looking for
         } // for each possible bus
 	if (iBus == 32) { // scanned all buses and didn't find anything
             printf("No supported device found\n");
 	    printf("Your system may require sudo to access I2C.\n");
             return -1; // problem - quit
 	}
-        printf("SCD41 detected and initialized\n");
-	co2.start(); // start the sensor with the default options
+        if (bCO2) {
+            printf("SCD4x detected and initialized\n");
+	    co2.start(); // start the sensor with the default options
+        }
+        if (bTemp) {
+            printf("%s detected and initialized\n", szDevices[bbt.type()]);
+            bbt.start(); // start the sensor with the default options
+        }
+        if (!bCO2 && !bTemp) {
+            printf("No sensors detected; exiting...\n");
+            return 0;
+        }
 	while (1) {
             char szValue[32];
             FILE *f;
-            co2.getSample();
             f = fopen(argv[1], "w+b");
             if (f) { // open succeeded
-                // The constant info for each JSON record
-                rec.szMake = "Sensirion";
-                rec.szModel = "SCD41";
-                rec.szValue = szValue;
-		// Add CO2 value
-                rec.szKind = "carbon_dioxide";
-                sprintf(szValue, "%d", co2.co2());
-                rec.szUnit = "parts_per_million";
-                AddJSONItem(f, &rec, REC_FIRST);
-		// Add temperature value
-                rec.szKind = "temperature";
-                sprintf(szValue, "%.1f", (float)co2.temperature() / 10.0f);
-                rec.szUnit = "celsius";
-                AddJSONItem(f, &rec, REC_ANY);
-		// Add humidity value
-                rec.szKind = "humidity";
-                sprintf(szValue, "%d", co2.humidity());
-                rec.szUnit = "percent";
-                AddJSONItem(f, &rec, REC_LAST);
+                if (bCO2) {
+                    co2.getSample();
+                    // The constant info for each JSON record of the SCD41
+                    rec.szMake = "Sensirion";
+                    rec.szModel = "SCD41";
+                    rec.szValue = szValue;
+	            // Add CO2 value
+                    rec.szKind = "carbon_dioxide";
+                    sprintf(szValue, "%d", co2.co2());
+                    rec.szUnit = "parts_per_million";
+                    AddJSONItem(f, &rec, REC_FIRST);
+		    // Add temperature value
+                    rec.szKind = "temperature";
+                    sprintf(szValue, "%.1f", (float)co2.temperature() / 10.0f);
+                    rec.szUnit = "celsius";
+                    AddJSONItem(f, &rec, REC_ANY);
+		    // Add humidity value
+                    rec.szKind = "humidity";
+                    sprintf(szValue, "%d", co2.humidity());
+                    rec.szUnit = "percent";
+                    AddJSONItem(f, &rec, (bTemp)? REC_ANY : REC_LAST);
+                } // CO2 sensor
+                if (bTemp) { // temp/humidity/pressure
+                    BBT_SAMPLE bbts;
+                    bbt.getSample(&bbts);
+                    // The constant info for each JSON record of the SCD41
+                    rec.szMake = szMakers[bbt.type()];
+                    rec.szModel = szDevices[bbt.type()];
+                    rec.szValue = szValue;
+                    // Add temperature value
+                    rec.szKind = "temperature";
+                    sprintf(szValue, "%.1f", (float)bbts.temperature / 10.0f);
+                    rec.szUnit = "celsius";
+                    if (bbt.caps() == BBT_CAP_TEMPERATURE) { // only temp
+                        AddJSONItem(f, &rec, (bCO2) ? REC_LAST : REC_FIRST | REC_LAST);
+                    } else {
+                        AddJSONItem(f, &rec, (bCO2) ? REC_ANY : REC_FIRST);
+                    }
+                    if (bbt.caps() & BBT_CAP_HUMIDITY) {
+                        // Add humidity value
+                        rec.szKind = "humidity";
+                        sprintf(szValue, "%d", bbts.humidity);
+                        rec.szUnit = "percent";
+                        AddJSONItem(f, &rec, (bbt.caps() & BBT_CAP_PRESSURE) ? REC_ANY : REC_LAST);
+                    }
+                    if (bbt.caps() & BBT_CAP_PRESSURE) {
+                        // Add pressure value
+                        rec.szKind = "pressure";
+                        sprintf(szValue, "%d", bbts.pressure);
+                        rec.szUnit = "hectopascal";
+                        AddJSONItem(f, &rec, REC_LAST);
+                    }
+                } // bb_temperature sensor
 		// write any remaining data and close the file
                 fflush(f);
                 fclose(f);
