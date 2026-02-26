@@ -3,9 +3,10 @@
 :figure-caption!:
 
 :trmnl_link: link:https://trmnl.com[TRMNL]
-:trmnl_byos_link: link:https://trmnl.com/developers[TRMNL BYOS]
+:trmnl_byos_link: link:https://docs.trmnl.com/go/diy/byos[TRMNL BYOS]
 :pi_project_link: link:https://alchemists.io/projects/pi[Pi]
 :raspberry_pi_link: link:https://www.raspberrypi.org[Raspberry Pi]
+:raspberry_pi_pinout_link: link:https://pinout.xyz[Raspberry Pi Pinout]
 
 = Sensor Scanner
 
@@ -44,6 +45,19 @@ cd sensor_scanner
 bin/setup
 ----
 
+To connect sensors to your Raspberry Pi, buy these cables:
+
+* link:https://www.sparkfun.com/flexible-qwiic-cable-female-jumper-4-pin.html[Flexible Qwiic Cable - Female Jumper (4-pin)]: Necessary to connect your Raspberry Pi to your first sensor.
+* link:https://www.sparkfun.com/qwiic-cable-50mm.html[Qwiic Cable - 50mm]: Necessary to connect any number of sensors together (i.e. daisy chain). If 50mm is too short, you can also pick up 100mm, 200mm, and 500mm cables too. You'll need one cable per sensor you wish to daisy chain.
+
+To setup your Raspberry PI with your first sensor, follow these steps:
+
+. Open the {raspberry_pi_pinout_link} in your browser. This provides a visual guide to all pin locations. Pin 1 starts at the top of your Raspberry Pi board (near the microSSD card port).
+. Connect the red cable to Pin 1 (3.3v).
+. Connect the blue cable to Pin 3 (I2C Data).
+. Connect the yellow cable to Pin 5 (I2C Clock).
+. Connect the black cable to Pin 6 (Ground).
+
 == Usage
 
 To build for {raspberry_pi_link}, use
@@ -53,7 +67,7 @@ To build for {raspberry_pi_link}, use
 bin/build
 ----
 
-💡 You can also use the {pi_project_link} project to save the above as a `sensor_scanner` service for automatic install and configuration on your Raspberry Pi.
+💡 You can also use the {pi_project_link} project to save the above as a `sensor_scanner` service for automatic install and configuration on your Raspberry Pi. For further examples, check out the link:https://github.com/usetrmnl/terminus/blob/main/doc/raspberry_pi.adoc[Terminus Raspberry Pi] documentation.
 
 == Development
 
